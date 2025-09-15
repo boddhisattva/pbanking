@@ -43,7 +43,7 @@ class BatchPayoutValidator
   end
 
   def validate_transfer_fields(transfer, index)
-    required_fields = %i[amount currency recipient_name recipient_bic recipient_iban recipient_email]
+    required_fields = [:amount, :currency, :recipient_name, :recipient_bic, :recipient_iban, :recipient_email]
 
     required_fields.each do |field|
       if transfer[field].blank?

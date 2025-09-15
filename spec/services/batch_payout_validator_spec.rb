@@ -10,13 +10,13 @@ RSpec.describe BatchPayoutValidator do
       company_iban: 'FR1420041010050500013M02606',
       payouts: [
         {
-          "amount": "20.25",
-          "currency": "EUR",
-          "recipient_name": "Marcus Roger",
-          "recipient_email": "marcus@roger.com",
-          "recipient_bic": "SELYFRXWERW",
-          "recipient_iban": "SE7280000810340009783242",
-          "reason": "For your services"
+          amount: "20.25",
+          currency: "EUR",
+          recipient_name: "Marcus Roger",
+          recipient_email: "marcus@roger.com",
+          recipient_bic: "SELYFRXWERW",
+          recipient_iban: "SE7280000810340009783242",
+          reason: "For your services"
         }
       ]
     }
