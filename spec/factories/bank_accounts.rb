@@ -20,6 +20,9 @@
 #
 FactoryBot.define do
   factory :bank_account do
-    business_account { nil }
+    association :business_account
+    balance_cents { 100000 }
+    sequence(:iban) { |n| "FR142004101005050001#{n.to_s.rjust(4, '0')}" }
+    bic { "BNPAFRPP" }
   end
 end

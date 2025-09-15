@@ -8,18 +8,29 @@
 #  note(The sender-specified note)                                   :text
 #  receiver(The receiver of the transaction)                         :string           not null
 #  recipient_type(The type of the recipient - email)                 :string           not null
+#  status                                                            :string           default("pending")
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  bank_account_id(The bank account that the transaction belongs to) :bigint           not null
+#  batch_payout_id                                                   :bigint
 #
 # Indexes
 #
 #  index_transactions_on_bank_account_id  (bank_account_id)
+#  index_transactions_on_batch_payout_id  (batch_payout_id)
 #
 # Foreign Keys
 #
 #  fk_rails_...  (bank_account_id => bank_accounts.id)
 #
 class Transaction < ApplicationRecord
+  attribute :status, :string, default: "pending"
+  enum :status, {
+    pending: "pending",
+    failed: "failed",
+    success: "success"
+  }, prefix: true
+
   belongs_to :bank_account
+  belongs_to :batch_payout, optional: true
 end

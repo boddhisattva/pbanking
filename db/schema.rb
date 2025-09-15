@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_13_102159) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_13_152304) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -22,6 +22,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_13_102159) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["business_account_id"], name: "index_bank_accounts_on_business_account_id"
+  end
+
+  create_table "batch_payouts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "business_account_id", null: false
+    t.index ["business_account_id"], name: "index_batch_payouts_on_business_account_id"
   end
 
   create_table "business_accounts", force: :cascade do |t|
@@ -42,7 +49,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_13_102159) do
     t.text "note", comment: "The sender-specified note"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "batch_payout_id"
+    t.string "status", default: "pending"
     t.index ["bank_account_id"], name: "index_transactions_on_bank_account_id"
+    t.index ["batch_payout_id"], name: "index_transactions_on_batch_payout_id"
   end
 
   add_foreign_key "bank_accounts", "business_accounts"
