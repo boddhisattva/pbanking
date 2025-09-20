@@ -116,5 +116,122 @@ RSpec.describe BatchPayoutService do
         expect(response[:error]).to include("Couldn't find BankAccount")
       end
     end
+
+    context 'with concurrent balance updates' do
+      it 'uses pessimistic locking for balance update' do
+        expect_any_instance_of(BankAccount).to receive(:with_lock).and_call_original
+
+        service.execute
+      end
+
+      it 'handles concurrent transfers to the same account correctly' do
+        initial_balance = bank_account.balance_cents
+        transfer_amount_per_request = 10000
+
+        payouts_params = {
+          company_name: "#{business_account.first_name} #{business_account.last_name}",
+          company_bic: bank_account.bic,
+          company_iban: bank_account.iban,
+          payouts: [
+            {
+              amount: '100.00',
+              currency: 'EUR',
+              recipient_name: 'Test User',
+              recipient_email: 'test@example.com',
+              recipient_bic: 'DEUTDEFF',
+              recipient_iban: 'DE89370400440532013000',
+              reason: 'Concurrent test'
+            }
+          ]
+        }
+        wait_for_start = true
+
+        results = []
+        threads = 3.times.map do |i|
+          Thread.new do
+            # below line is to wait until all threads are created
+            true while wait_for_start # this allows to have high contention among different threads
+            ActiveRecord::Base.connection_pool.with_connection do
+              service = described_class.new(payouts_params)
+              result = service.execute
+              results << result
+            end
+          end
+        end
+
+        # below line is to allow all threads to start execution together(i.e., to replicate simultaneous execution/access)
+        wait_for_start = false
+
+        # upon spawning one or more threads, we use #join to wait for each thread to finish.
+        # with the below line, the main thread stops and waits for all threads to finish completely.
+        # Simple analogy: ike cooking multiple dishes at once - you can't serve until all are ready.(pizza - dough(shaping & molding it to be circular), sauce(cooking tomatoes), toppings(grating cheese, etc.))
+        # In other words: Parent(main thread) waiting for kids(other newly spawned threads) to tie their shoes before leaving the house together (i.e., to complete all transfers)
+        # without the below line, the expectations run BEFORE transfers complete
+        # Always use join() when you need thread results
+        # We don't know how long it will take for the threads to finish so we should ideally wait for all of them.
+        # For each thread, wait until it's done
+        threads.each(&:join)
+
+        bank_account.reload
+
+        successful_transfers = results.count { |r| r[:status] == :created }
+        expected_balance = initial_balance - (transfer_amount_per_request * successful_transfers)
+
+        expect(bank_account.balance_cents).to eq(expected_balance)
+        expect(Transaction.count).to eq(successful_transfers)
+        expect(BatchPayout.count).to eq(3)
+        expect(Transaction.all.pluck(:status).uniq).to eq([ 'success' ])
+      end
+
+      it 'handles race conditions with multiple concurrent transfer requests and limited balance in bank account' do
+        bank_account.update!(balance_cents: 30000)
+
+        payout_params = {
+          company_name: "#{business_account.first_name} #{business_account.last_name}",
+          company_bic: bank_account.bic,
+          company_iban: bank_account.iban,
+          payouts: [
+            {
+              amount: '100.00',
+              currency: 'EUR',
+              recipient_name: 'Race Test',
+              recipient_email: 'race@example.com',
+              recipient_bic: 'DEUTDEFF',
+              recipient_iban: 'DE89370400440532013000',
+              reason: 'Testing race condition'
+            }
+          ]
+        }
+
+        wait_for_start = true
+
+        results = []
+        threads = 4.times.map do |i|
+          Thread.new do
+            true while wait_for_start
+            ActiveRecord::Base.connection_pool.with_connection do
+              service = described_class.new(payout_params)
+              result = service.execute
+              results << result
+            end
+          end
+        end
+        wait_for_start = false
+
+        threads.each(&:join)
+
+        successful_transfers = results.select { |r| r[:status] == :created }
+        failed_transfers = results.select { |r| r[:success] == false }
+
+        expect(successful_transfers.count).to eq(3)
+        expect(failed_transfers.count).to eq(1)
+        expect(failed_transfers.first[:error]).to include('Insufficient funds')
+
+        bank_account.reload
+        expect(bank_account.balance_cents).to eq(0)
+        expect(Transaction.count).to eq(3) # 3 successful batch payouts with 1 transaction each
+        expect(Transaction.all.pluck(:status).uniq).to eq([ 'success' ])
+      end
+    end
   end
 end
