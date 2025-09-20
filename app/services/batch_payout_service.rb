@@ -10,6 +10,10 @@ class BatchPayoutService
     bank_account = find_bank_account_by_iban!
 
     result = bank_account.with_lock do
+      # to get the latest value of the current amount left in the bank account
+      # especially handy in case of concurrent payout requests
+      bank_account.reload
+
       business_account = bank_account.business_account
       total_amount_cents = calculate_total_amount_cents
 
