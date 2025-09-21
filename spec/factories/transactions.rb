@@ -8,13 +8,16 @@
 #  note(The sender-specified note)                                   :text
 #  receiver(The receiver of the transaction)                         :string           not null
 #  recipient_type(The type of the recipient - email)                 :string           not null
+#  status                                                            :string           default("pending")
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null
 #  bank_account_id(The bank account that the transaction belongs to) :bigint           not null
+#  batch_payout_id                                                   :bigint
 #
 # Indexes
 #
 #  index_transactions_on_bank_account_id  (bank_account_id)
+#  index_transactions_on_batch_payout_id  (batch_payout_id)
 #
 # Foreign Keys
 #
@@ -22,6 +25,11 @@
 #
 FactoryBot.define do
   factory :transaction do
-    business_account { nil }
+    association :bank_account
+    recipient_type { "email" }
+    sequence(:receiver) { |n| "user#{n}@example.com" }
+    amount_cents { 5000 }
+    amount_currency { "EUR" }
+    note { "Payment for services" }
   end
 end
