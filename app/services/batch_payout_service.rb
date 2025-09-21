@@ -85,19 +85,6 @@ class BatchPayoutService
       id: batch_payout.id,
       business_account_id: batch_payout.business_account_id,
       status: "completed"
-      # transactions: batch_payout.transactions.map do |transaction|
-      #   {
-      #     id: transaction.id,
-      #     amount: {
-      #       cents: transaction.amount_cents/100.0,
-      #       currency: transaction.amount_currency
-      #     },
-      #     receiver: transaction.receiver,
-      #     note: transaction.note,
-      #     status: transaction.status,
-      #     recipient_type: transaction.recipient_type
-      #   }
-      # end
     }
   end
 end
