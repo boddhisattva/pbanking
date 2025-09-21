@@ -161,9 +161,8 @@ RSpec.describe BatchPayoutValidator do
     end
   end
 
-  # Todo: to review from below
   describe '#validate_sufficient_funds' do
-    let(:bank_account) { FactoryBot.build(:bank_account, balance_cents: 50000) }
+    let(:bank_account) { build(:bank_account, balance_cents: 50000) }
 
     it 'validates fund availability' do
       validator.validate_sufficient_funds(bank_account, 30000)
@@ -178,7 +177,7 @@ RSpec.describe BatchPayoutValidator do
   end
 
   describe 'error clearing behavior' do
-    it 'clears previous errors on revalidation' do
+    it 'clears previously captured validation errors on revalidation' do
       params[:company_bic] = nil
       validator.valid?
       expect(validator.errors).not_to be_empty
