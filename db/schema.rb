@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_13_152304) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_25_151529) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -21,6 +21,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_13_152304) do
     t.string "bic", null: false, comment: "The BIC of the bank account"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "reserved_amount_cents", default: 0, null: false, comment: "Amount reserved for transactions in proceess/pending e.g., for a batch payout"
     t.index ["business_account_id"], name: "index_bank_accounts_on_business_account_id"
   end
 
@@ -28,6 +29,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_13_152304) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "business_account_id", null: false
+    t.string "status", default: "PENDING", null: false, comment: "current status of the batch payout"
+    t.bigint "requested_amount", default: 0, null: false, comment: "Total amount requested for the batch payout"
+    t.string "requested_amount_currency", limit: 3, null: false, comment: "currency of the amount requested for the batch payout"
+    t.integer "total_count", default: 0, null: false, comment: "total number of transactions in the batch payout"
+    t.integer "successful_count", default: 0, null: false, comment: "number of successful transactions in the batch payout"
+    t.integer "failed_count", default: 0, null: false, comment: "number of failed transactions in the batch payout"
+    t.integer "pending_count", default: 0, null: false, comment: "number of pending transactions in the batch payout"
+    t.datetime "closed_at", comment: "timestamp when the batch payout is closed i.e., its processed & available balance from temporary hold is released"
+    t.datetime "completed_at", comment: "timestamp when the batch payout is processed i.e., it could have all suceedeed or a mixture of suceedeed, failed, pending"
     t.index ["business_account_id"], name: "index_batch_payouts_on_business_account_id"
   end
 
@@ -50,7 +60,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_13_152304) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "batch_payout_id"
-    t.string "status", default: "pending"
+    t.string "status", default: "PENDING", comment: "The current status of a transaction"
+    t.string "last_error", comment: "The last error message of a transaction"
     t.index ["bank_account_id"], name: "index_transactions_on_bank_account_id"
     t.index ["batch_payout_id"], name: "index_transactions_on_batch_payout_id"
   end
