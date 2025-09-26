@@ -14,7 +14,7 @@ class BatchPayouts::ProcessTransactionJob
     transaction = Transaction.includes(:bank_account, :batch_payout).find(transaction_id)
 
     # Skip if already processed
-    return if transaction.status != "PENDING"
+    return if transaction.status != "pending"
 
     ActiveRecord::Base.transaction do
       begin
@@ -88,12 +88,10 @@ class BatchPayouts::ProcessTransactionJob
   end
 
   def determine_final_status(batch_payout)
-    if batch_payout.failed_count == 0
+    if batch_payout.transactions.map(&:status).all?("success")
       "SUCCESS"
-    elsif batch_payout.successful_count == 0
-      "FAILED"
     else
-      "PARTIAL_SUCCESS"
+      "DENIED"
     end
   end
 

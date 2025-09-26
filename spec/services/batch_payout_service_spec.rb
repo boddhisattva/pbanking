@@ -37,7 +37,7 @@ RSpec.describe BatchPayoutService do
   let(:params) { valid_params }
 
   describe '#execute' do
-    context 'with valid params and sufficient funds' do
+    context 'with valid params and sufficient funds', :sidekiq_inline do
       it 'creates a batch payout and transactions for each payout' do
         expect { service.execute }
           .to change { BatchPayout.count }.by(1)
@@ -53,16 +53,15 @@ RSpec.describe BatchPayoutService do
         expect(transactions[1].amount_cents).to eq(5025)
       end
 
-      it 'creates transactions with correct receiver details and completed status' do
+      it 'creates transactions with correct receiver details and eventual status as success' do
         result = service.execute
         transaction = Transaction.find_by(receiver: 'alice@example.com')
 
-        # amount_cents = transaction.amount_cents / 100.0
-        # expect(transaction.amount_cents).to eq(10050)
+        expect(transaction.amount_cents).to eq(10050)
         expect(transaction.amount_currency).to eq('EUR')
         expect(transaction.note).to eq('Payment for invoice #123')
-        expect(transaction.status).to eq('success')
         expect(transaction.recipient_type).to eq('EMAIL')
+        expect(transaction.status).to eq('success')
       end
 
       it 'deducts total amount from bank account balance' do
@@ -75,6 +74,7 @@ RSpec.describe BatchPayoutService do
         expect(response[:status]).to be :created
         expect(response[:batch_payout]).to be_present
         expect(response[:batch_payout][:id]).to eq(BatchPayout.last.id)
+        expect(response[:batch_payout][:status]).to eq('success')
       end
 
       it 'executes all operations within a transaction' do

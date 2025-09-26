@@ -25,8 +25,8 @@ class BatchPayout < ApplicationRecord
   enum :status, {
     pending: "PENDING",
     processing: "PROCESSING",
-    completed: "COMPLETED",
-    failed: "FAILED"
+    success: "SUCCESS",
+    denied: "DENIED"
   }, prefix: true
 
   belongs_to :business_account

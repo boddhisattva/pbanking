@@ -32,7 +32,7 @@ class BatchPayoutService
         # update_bank_account_balance(bank_account)
         BatchPayouts::ProcessBatchPayoutJob.perform_async(batch_payout.id)
 
-        { status: :created, batch_payout: batch_payout_response(batch_payout) }
+        { status: :created, batch_payout: batch_payout_response(batch_payout.reload) }
       end
     end
 
@@ -101,7 +101,7 @@ class BatchPayoutService
     {
       id: batch_payout.id,
       business_account_id: batch_payout.business_account_id,
-      status: "completed"
+      status: batch_payout.status
     }
   end
 end
