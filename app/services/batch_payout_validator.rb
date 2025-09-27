@@ -17,11 +17,6 @@ class BatchPayoutValidator
 
     @errors.empty?
   end
-  #   available_balance = bank_account.balance_cents - bank_account.reserved_amount_cents
-  #   if available_balance < total_amount_cents
-  #     @errors << "Insufficient funds. Required: #{total_amount_cents} cents, Available: #{available_balance} cents"
-  #   end
-  # end
 
   private
 
