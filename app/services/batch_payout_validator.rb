@@ -17,12 +17,11 @@ class BatchPayoutValidator
 
     @errors.empty?
   end
-
-  def validate_sufficient_funds(bank_account, total_amount_cents)
-    if bank_account.balance_cents < total_amount_cents
-      @errors << "Insufficient funds. Required: #{total_amount_cents} cents, Available: #{bank_account.balance_cents} cents"
-    end
-  end
+  #   available_balance = bank_account.balance_cents - bank_account.reserved_amount_cents
+  #   if available_balance < total_amount_cents
+  #     @errors << "Insufficient funds. Required: #{total_amount_cents} cents, Available: #{available_balance} cents"
+  #   end
+  # end
 
   private
 
@@ -43,7 +42,7 @@ class BatchPayoutValidator
   end
 
   def validate_transfer_fields(transfer, index)
-    required_fields = [:amount, :currency, :recipient_name, :recipient_bic, :recipient_iban, :recipient_email]
+    required_fields = [ :amount, :currency, :recipient_name, :recipient_bic, :recipient_iban, :recipient_email ]
 
     required_fields.each do |field|
       if transfer[field].blank?

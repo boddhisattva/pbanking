@@ -161,21 +161,6 @@ RSpec.describe BatchPayoutValidator do
     end
   end
 
-  describe '#validate_sufficient_funds' do
-    let(:bank_account) { build(:bank_account, balance_cents: 50000) }
-
-    it 'validates fund availability' do
-      validator.validate_sufficient_funds(bank_account, 30000)
-      expect(validator.errors).to be_empty
-
-      validator.validate_sufficient_funds(bank_account, 50000)
-      expect(validator.errors).to be_empty
-
-      validator.validate_sufficient_funds(bank_account, 60000)
-      expect(validator.errors).to include('Insufficient funds. Required: 60000 cents, Available: 50000 cents')
-    end
-  end
-
   describe 'error clearing behavior' do
     it 'clears previously captured validation errors on revalidation' do
       params[:company_bic] = nil

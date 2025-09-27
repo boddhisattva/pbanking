@@ -17,19 +17,14 @@ class BatchPayoutService
       bank_account.reload
 
       total_amount_cents = calculate_total_amount_cents
-
       business_account = bank_account.business_account
-
-      @validator.validate_sufficient_funds(bank_account, total_amount_cents)
 
       if @validator.errors.present?
         validation_error_response
       else
         bank_account.reserve_funds!(total_amount_cents)
         batch_payout = create_batch_payout(business_account, total_amount_cents)
-        # CONTINUE from here post lunch
         create_transactions_as_pending_initially(batch_payout, bank_account)
-        # update_bank_account_balance(bank_account)
         BatchPayouts::ProcessBatchPayoutJob.perform_async(batch_payout.id)
 
         { status: :created, batch_payout: batch_payout_response(batch_payout.reload) }
@@ -90,11 +85,6 @@ class BatchPayoutService
         status: "PENDING"
       )
     end
-  end
-
-  def update_bank_account_balance(bank_account)
-    total_amount = calculate_total_amount_cents
-    bank_account.update!(balance_cents: bank_account.balance_cents - total_amount)
   end
 
   def batch_payout_response(batch_payout)

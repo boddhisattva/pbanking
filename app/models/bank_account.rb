@@ -32,8 +32,8 @@ class BankAccount < ApplicationRecord
   def reserve_funds!(amount_cents)
     with_lock do
       reload
-      if balance_cents < amount_cents
-        raise InsufficientFundsError, "Insufficient funds: available #{balance_cents}, required #{amount_cents}"
+      if available_balance_cents < amount_cents
+        raise InsufficientFundsError, "Insufficient funds: available #{available_balance_cents}, required #{amount_cents}"
       end
       update!(reserved_amount_cents: reserved_amount_cents + amount_cents)
     end
@@ -41,14 +41,21 @@ class BankAccount < ApplicationRecord
 
   # Process a successful transaction
   def process_transaction_success!(amount_cents)
-    update!(
-      balance_cents: balance_cents - amount_cents,
-      reserved_amount_cents: reserved_amount_cents - amount_cents
-    )
+    with_lock do
+      reload # Gets the latest value of the reserved_amount_cents especially useful in concurrent transactions
+      update!(
+        balance_cents: balance_cents - amount_cents,
+        reserved_amount_cents: reserved_amount_cents - amount_cents
+      )
+    end
   end
 
   # Release reserved funds for failed transaction
   def release_reserved_funds!(amount_cents)
-    update!(reserved_amount_cents: reserved_amount_cents - amount_cents)
+    with_lock do
+      reload # Gets the latest value of the reserved_amount_cents especially usefulin concurrent transactions
+
+      update!(reserved_amount_cents: reserved_amount_cents - amount_cents)
+    end
   end
 end
