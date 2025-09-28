@@ -1,8 +1,6 @@
 module Api
   module V1
-    class BatchPayoutsController < ApplicationController
-      skip_before_action :verify_authenticity_token
-
+    class BatchPayoutsController < BaseController
       def create
         result = BatchPayoutService.new(batch_payout_params).execute
 
