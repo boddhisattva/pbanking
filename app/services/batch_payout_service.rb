@@ -53,10 +53,6 @@ class BatchPayoutService
     BankAccount.find_by!(iban: @params[:company_iban])
   end
 
-  def insufficient_funds_error(available = nil, required = nil)
-    { success: false, error: "Insufficient funds" }
-  end
-
   def create_batch_payout(business_account, total_amount_cents)
     total_payouts_count = @params[:payouts].size
     # BatchPayout.create!(business_account: business_account)
