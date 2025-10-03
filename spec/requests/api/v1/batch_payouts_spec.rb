@@ -107,9 +107,6 @@ RSpec.describe "Api::V1::BatchPayouts", type: :request do
       end
 
       it "does not enqueue any Sidekiq jobs when funds are insufficient" do
-        # Clear any existing jobs
-        Sidekiq::Worker.clear_all
-
         post "/api/v1/batch_payouts", params: insufficient_funds_params, as: :json
 
         # No batch payout job should be enqueued
@@ -152,8 +149,6 @@ RSpec.describe "Api::V1::BatchPayouts", type: :request do
       end
 
       it "does not enqueue any Sidekiq jobs when bank account doesn't exist" do
-        Sidekiq::Worker.clear_all
-
         post "/api/v1/batch_payouts", params: invalid_iban_params, as: :json
 
         expect(BatchPayouts::ProcessBatchPayoutJob.jobs.size).to eq(0)
