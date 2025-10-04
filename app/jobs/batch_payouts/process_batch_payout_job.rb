@@ -15,7 +15,7 @@ module BatchPayouts
     rescue ActiveRecord::RecordNotFound => e
       Rails.logger.error "BatchPayout #{batch_payout_id} not found: #{e.message}"
       # Don't retry if record doesn't exist
-      raise Sidekiq::JobRetry::Skip
+      raise Sidekiq::Job::Interrupted
     end
   end
 end

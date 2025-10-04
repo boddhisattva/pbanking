@@ -1,13 +1,13 @@
 # app/jobs/process_transaction_job.rb
 class BatchPayouts::ProcessTransactionJob
   include Sidekiq::Job
+  MAX_RETRIES = 5
 
-  # Configure Sidekiq options
   sidekiq_options queue: "default",
                   retry: 5,
                   backtrace: true,
-                  dead: true,  # Send to dead queue after retries exhausted
                   retry_in: ->(retry_count) { (retry_count ** 2) * 60 }  # Exponential backoff
+                  retry_in: ->(retry_count) { (retry_count ** 2) * 60 }  # Explicit Exponential backoff
   # Helps to navigate the thundering herd problem by spreading out the load
 
   def perform(transaction_id)
@@ -24,18 +24,17 @@ class BatchPayouts::ProcessTransactionJob
         if success
           handle_success(transaction)
         else
-          handle_failure(transaction)
+          handle_failure(transaction) # This is for expected errors from make_external_payout that return false
         end
       rescue => e
         Rails.logger.error "Transaction #{transaction_id} failed: #{e.message}"
-        handle_failure(transaction, e.message)
-        raise # Re-raise to trigger Sidekiq retry
+        raise # Re-raise to trigger Sidekiq retry this is for unexpected errors like Network Timeout, etc.
       end
     end
   rescue ActiveRecord::RecordNotFound => e
     Rails.logger.error "Transaction #{transaction_id} not found: #{e.message}"
     # Don't retry if record doesn't exist
-    raise Sidekiq::JobRetry::Skip
+    raise Sidekiq::Job::Interrupted
   end
 
   private
@@ -47,18 +46,28 @@ class BatchPayouts::ProcessTransactionJob
   end
 
   def handle_failure(transaction, error_message = nil)
-    transaction.update!(
-      status: "FAILED",
-      last_error: error_message
-    )
-    transaction.bank_account.release_reserved_funds!(transaction.amount_cents)
-    update_batch_payout_status(transaction.batch_payout, false)
+    transaction.increment!(:retry_count)
+
+    if transaction.retry_count >= MAX_RETRIES
+      transaction.update!(
+        status: "FAILED",
+        last_error: error_message
+      )
+      transaction.bank_account.release_reserved_funds!(transaction.amount_cents)
+      update_batch_payout_status(transaction.batch_payout, false)
+    else
+
+      transaction.update!(
+        last_error: error_message
+      )
+      BatchPayouts::ProcessTransactionJob.perform_async(transaction.id)
+    end
   end
 
   def make_external_payout(transaction)
     # Simulate PayPal API call
 
-    true # for now, assume success
+    true # for now, assume success as this is a contrived example as part of a code exercise
   end
 
   def update_batch_payout_status(batch_payout, success)
@@ -88,7 +97,7 @@ class BatchPayouts::ProcessTransactionJob
   end
 
   def determine_final_status(batch_payout)
-    if batch_payout.transactions.map(&:status).all?("success")
+    if batch_payout.transactions.pluck(:status).all? { |s| s == "success" }
       "SUCCESS"
     else
       "DENIED"
