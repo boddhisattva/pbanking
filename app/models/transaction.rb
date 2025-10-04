@@ -9,6 +9,7 @@
 #  note(The sender-specified note)                                   :text
 #  receiver(The receiver of the transaction)                         :string           not null
 #  recipient_type(The type of the recipient - email)                 :string           not null
+#  retry_count(number of times the transaction has been retried)     :integer          default(0), not null
 #  status(The current status of a transaction)                       :string           default("pending")
 #  created_at                                                        :datetime         not null
 #  updated_at                                                        :datetime         not null

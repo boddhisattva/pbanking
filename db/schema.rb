@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_09_25_151529) do
+ActiveRecord::Schema[8.0].define(version: 2025_09_30_044138) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -62,6 +62,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_09_25_151529) do
     t.bigint "batch_payout_id"
     t.string "status", default: "PENDING", comment: "The current status of a transaction"
     t.string "last_error", comment: "The last error message of a transaction"
+    t.integer "retry_count", default: 0, null: false, comment: "number of times the transaction has been retried"
     t.index ["bank_account_id"], name: "index_transactions_on_bank_account_id"
     t.index ["batch_payout_id"], name: "index_transactions_on_batch_payout_id"
   end
