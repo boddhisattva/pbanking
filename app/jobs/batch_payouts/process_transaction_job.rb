@@ -6,7 +6,6 @@ class BatchPayouts::ProcessTransactionJob
   sidekiq_options queue: "default",
                   retry: 5,
                   backtrace: true,
-                  retry_in: ->(retry_count) { (retry_count ** 2) * 60 }  # Exponential backoff
                   retry_in: ->(retry_count) { (retry_count ** 2) * 60 }  # Explicit Exponential backoff
   # Helps to navigate the thundering herd problem by spreading out the load
 
