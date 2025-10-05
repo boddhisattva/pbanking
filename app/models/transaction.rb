@@ -2,19 +2,20 @@
 #
 # Table name: transactions
 #
-#  id                                                                :bigint           not null, primary key
-#  amount_cents(The amount of the transaction in cents)              :bigint           not null
-#  amount_currency(The currency of the transaction)                  :string           not null
-#  last_error(The last error message of a transaction)               :string
-#  note(The sender-specified note)                                   :text
-#  receiver(The receiver of the transaction)                         :string           not null
-#  recipient_type(The type of the recipient - email)                 :string           not null
-#  retry_count(number of times the transaction has been retried)     :integer          default(0), not null
-#  status(The current status of a transaction)                       :string           default("pending")
-#  created_at                                                        :datetime         not null
-#  updated_at                                                        :datetime         not null
-#  bank_account_id(The bank account that the transaction belongs to) :bigint           not null
-#  batch_payout_id                                                   :bigint
+#  id                                                                   :bigint           not null, primary key
+#  amount_cents(The amount of the transaction in cents)                 :bigint           not null
+#  amount_currency(The currency of the transaction)                     :string           not null
+#  last_error(The last error message of a transaction)                  :string
+#  next_retry_at(Timestamp when a failed transaction should be retried) :datetime
+#  note(The sender-specified note)                                      :text
+#  receiver(The receiver of the transaction)                            :string           not null
+#  recipient_type(The type of the recipient - email)                    :string           not null
+#  retry_count(number of times the transaction has been retried)        :integer          default(0), not null
+#  status(The current status of a transaction)                          :string           default("pending")
+#  created_at                                                           :datetime         not null
+#  updated_at                                                           :datetime         not null
+#  bank_account_id(The bank account that the transaction belongs to)    :bigint           not null
+#  batch_payout_id                                                      :bigint
 #
 # Indexes
 #

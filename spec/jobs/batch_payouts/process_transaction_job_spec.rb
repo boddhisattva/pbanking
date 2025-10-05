@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
+  include ActiveSupport::Testing::TimeHelpers
+
   subject(:job) { described_class.new }
 
   let(:business_account) { create(:business_account) }
@@ -36,7 +38,15 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
 
 
         context 'when transaction is not the last transaction before success' do
-          let(:pending_transaction) do
+          let(:pending_transaction_1) do
+            create(:transaction,
+                              batch_payout: batch_payout,
+                              bank_account: bank_account,
+                              amount_cents: 3000,
+                              status: 'pending')
+          end
+
+          let(:pending_transaction_2) do
             create(:transaction,
                               batch_payout: batch_payout,
                               bank_account: bank_account,
@@ -45,8 +55,8 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
           end
 
           before do
-            pending_transaction
-
+            pending_transaction_1
+            pending_transaction_2
             batch_payout.update!(
               total_count: 2,
               pending_count: 2,
@@ -56,7 +66,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
           end
 
           it 'does not mark batch as completed & updates other batch payout details correctly' do
-            job.perform(transaction.id)
+            job.perform(pending_transaction_1.id)
 
             batch_payout.reload
             expect(batch_payout.status).to eq('pending')
@@ -95,15 +105,23 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
 
         it 'updates transaction retry count, updates batch payout counters correctly, calls release_reserved_funds!' do
           expect(BatchPayouts::ProcessTransactionJob)
-          .to receive(:perform_async)
-          .with(transaction.id)
-          expect { job.perform(transaction.id) }.to change { transaction.reload.retry_count }.from(0).to(1)
-          expect(transaction.reload.status).to eq('pending')
+          .to receive(:perform_in)
+          .with(2.minutes, transaction.id)
 
-          batch_payout.reload
+          current_time = Time.current
+          travel_to current_time do
+            expected_retry_time = 2.minutes.from_now
 
-          expect(batch_payout.successful_count).to eq(0)
-          expect(batch_payout.pending_count).to eq(1)
+            expect { job.perform(transaction.id) }.to change { transaction.reload.retry_count }.from(0).to(1)
+
+            transaction.reload
+            expect(transaction.status).to eq('pending')
+            expect(transaction.next_retry_at).to be_within(1.second).of(expected_retry_time)
+
+            batch_payout.reload
+            expect(batch_payout.successful_count).to eq(0)
+            expect(batch_payout.pending_count).to eq(1)
+          end
         end
 
         context 'when max retries are exhausted' do

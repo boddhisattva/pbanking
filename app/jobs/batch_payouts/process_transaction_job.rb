@@ -55,11 +55,26 @@ class BatchPayouts::ProcessTransactionJob
       transaction.bank_account.release_reserved_funds!(transaction.amount_cents)
       update_batch_payout_status(transaction.batch_payout, false)
     else
-
+      retry_delay = calculate_retry_delay(transaction.retry_count)
       transaction.update!(
-        last_error: error_message
+        last_error: error_message,
+        next_retry_at: retry_delay.from_now
       )
-      BatchPayouts::ProcessTransactionJob.perform_async(transaction.id)
+      BatchPayouts::ProcessTransactionJob.perform_in(retry_delay, transaction.id)
+    end
+  end
+
+  def calculate_retry_delay(retry_count)
+    # Exponential backoff: 2min, 4min, 8min, 16min, 32min
+    # Helps to navigate the thundering herd problem by spreading out the load
+    case retry_count
+    when 1 then (2 ** retry_count).minutes  # 2 minutes
+    when 2 then (2 ** retry_count).minutes  # 4 minutes
+    when 3 then (2 ** retry_count).minutes  # 8 minutes
+    when 4 then (2 ** retry_count).minutes  # 16 minutes
+    when 5 then (2 ** retry_count).minutes  # 32 minutes
+    else
+      raise ArgumentError, "Unexpected retry_count: #{retry_count}. Should not exceed MAX_RETRIES (#{MAX_RETRIES})"
     end
   end
 
