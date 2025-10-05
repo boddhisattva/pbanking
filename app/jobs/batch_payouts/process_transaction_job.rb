@@ -12,7 +12,7 @@ class BatchPayouts::ProcessTransactionJob
   def perform(transaction_id)
     transaction = Transaction.includes(:bank_account, :batch_payout).find(transaction_id)
 
-    # Skip if already processed
+    # Skip if already processed & ensures job remains idempotent(i.e., running it multiple times is not an issue)
     return if transaction.status != "pending"
 
     ActiveRecord::Base.transaction do
@@ -23,7 +23,7 @@ class BatchPayouts::ProcessTransactionJob
         if success
           handle_success(transaction)
         else
-          handle_failure(transaction) # This is for expected errors from make_external_payout that return false
+          handle_failure(transaction)
         end
       rescue => e
         Rails.logger.error "Transaction #{transaction_id} failed: #{e.message}"
