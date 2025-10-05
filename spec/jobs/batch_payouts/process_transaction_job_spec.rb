@@ -35,6 +35,38 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
         end
 
 
+        context 'when transaction is not the last transaction before success' do
+          let(:pending_transaction) do
+            create(:transaction,
+                              batch_payout: batch_payout,
+                              bank_account: bank_account,
+                              amount_cents: 3000,
+                              status: 'pending')
+          end
+
+          before do
+            pending_transaction
+
+            batch_payout.update!(
+              total_count: 2,
+              pending_count: 2,
+              successful_count: 0,
+              failed_count: 0
+            )
+          end
+
+          it 'does not mark batch as completed' do
+            job.perform(transaction.id)
+
+            batch_payout.reload
+            expect(batch_payout.status).to eq('pending')
+            expect(batch_payout.closed_at).to be_nil
+            expect(batch_payout.completed_at).to be_nil
+            expect(batch_payout.failed_count).to eq(0)
+            expect(batch_payout.pending_count).to eq(1)
+            expect(batch_payout.successful_count).to eq(1)
+          end
+        end
         # TODO: Add test for when transaction is not the last transaction before success
         it 'updates transaction status to SUCCESS, batch payout appropriately & calls process_transaction_success!' do
           expect_any_instance_of(BankAccount)
