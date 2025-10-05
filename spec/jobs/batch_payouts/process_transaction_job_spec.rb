@@ -121,6 +121,10 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
             batch_payout.reload
             expect(batch_payout.successful_count).to eq(0)
             expect(batch_payout.pending_count).to eq(1)
+            expect(batch_payout.failed_count).to eq(0)
+            expect(batch_payout.completed_at).to be_nil
+            expect(batch_payout.closed_at).to be_nil
+            expect(batch_payout.status).to eq('pending')
           end
         end
 
@@ -171,6 +175,31 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
 
           expect { job.perform(transaction.id) }.to raise_error(StandardError, error_message)
         end
+      end
+    end
+
+    context 'when transaction is already processed' do
+      before do
+        transaction.update!(status: 'success')
+      end
+
+      it 'returns early without processing' do
+        expect(job).not_to receive(:make_external_payout)
+        expect(job).not_to receive(:handle_success)
+        expect(job).not_to receive(:handle_failure)
+
+        job.perform(transaction.id)
+      end
+    end
+
+    context 'when transaction does not exist' do
+      let(:non_existent_id) { 999999 }
+
+      it 'logs the error &raises Sidekiq::Job::Interrupted to prevent retries' do
+        expect(Rails.logger).to receive(:error).with(/Transaction #{non_existent_id} not found/)
+
+        expect { job.perform(non_existent_id) }
+          .to raise_error(Sidekiq::Job::Interrupted)
       end
     end
   end
