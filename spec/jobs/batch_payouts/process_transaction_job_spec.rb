@@ -55,7 +55,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
             )
           end
 
-          it 'does not mark batch as completed' do
+          it 'does not mark batch as completed & updates other batch payout details correctly' do
             job.perform(transaction.id)
 
             batch_payout.reload
@@ -138,6 +138,20 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
             expect(batch_payout.closed_at).not_to be_nil
             expect(batch_payout.status).to eq('denied')
           end
+        end
+      end
+
+      context 'when external payout raises an exception' do
+        let(:error_message) { 'External API error' }
+
+        before do
+          allow(job).to receive(:make_external_payout).and_raise(StandardError, error_message)
+        end
+
+        it 'logs the error & re-raises the error for Sidekiq to retry the job' do
+          expect(Rails.logger).to receive(:error).with(/Transaction #{transaction.id} failed: #{error_message}/)
+
+          expect { job.perform(transaction.id) }.to raise_error(StandardError, error_message)
         end
       end
     end
