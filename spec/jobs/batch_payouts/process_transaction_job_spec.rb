@@ -33,7 +33,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
     context 'when transaction exists and is pending' do
       context 'when external payout succeeds' do
         before do
-          allow(job).to receive(:make_external_payout).and_return(true)
+          allow(job).to receive(:make_external_payout).and_return([ true, nil ])
         end
 
 
@@ -98,7 +98,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
 
         context 'when update_batch_payout_status fails after transaction success' do
           before do
-            allow(job).to receive(:make_external_payout).and_return(true)
+            allow(job).to receive(:make_external_payout).and_return([ true, nil ])
             allow_any_instance_of(BatchPayout).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(batch_payout))
           end
 
@@ -121,7 +121,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
 
       context 'when external payout fails' do
         before do
-          allow(job).to receive(:make_external_payout).and_return(false)
+          allow(job).to receive(:make_external_payout).and_return([ false, 'Paypal API call related failure' ])
         end
 
         it 'updates transaction retry count, updates batch payout counters correctly, calls release_reserved_funds!' do
@@ -137,6 +137,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
 
             transaction.reload
             expect(transaction.status).to eq('pending')
+            expect(transaction.last_error).to eq('Paypal API call related failure')
             expect(transaction.next_retry_at).to be_within(1.second).of(expected_retry_time)
 
             batch_payout.reload
@@ -153,10 +154,10 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
           before do
             # Set transaction to have exhausted all retries
             transaction.update!(retry_count: BatchPayouts::ProcessTransactionJob::MAX_RETRIES)
-            allow(job).to receive(:make_external_payout).and_return(false)
+            allow(job).to receive(:make_external_payout).and_return([ false, 'Paypal API call related failure' ])
           end
 
-          it 'marks transaction as FAILED, releases reserved funds, does not schedule another retry job and updates batch payout appropriately' do
+          it 'updates transaction related details, releases reserved funds, does not schedule another retry job and updates batch payout appropriately' do
             expect_any_instance_of(BankAccount)
               .to receive(:release_reserved_funds!)
               .with(transaction.amount_cents)
@@ -169,7 +170,7 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
             transaction.reload
             expect(transaction.status).to eq('failed')
             expect(transaction.retry_count).to eq(BatchPayouts::ProcessTransactionJob::MAX_RETRIES + 1)
-            expect(transaction.last_error).to be_nil
+            expect(transaction.last_error).to eq('Paypal API call related failure')
 
             batch_payout.reload
 

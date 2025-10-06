@@ -18,12 +18,12 @@ class BatchPayouts::ProcessTransactionJob
     ActiveRecord::Base.transaction do
       begin
         # You can assume external payout to be successful for now
-        success = make_external_payout(transaction)
+        success, error_message = make_external_payout(transaction)
 
         if success
           handle_success(transaction)
         else
-          handle_failure(transaction)
+          handle_failure(transaction, error_message)
         end
       rescue => e
         Rails.logger.error "Transaction #{transaction_id} failed: #{e.message}"
@@ -80,8 +80,8 @@ class BatchPayouts::ProcessTransactionJob
 
   def make_external_payout(transaction)
     # Simulate PayPal API call
-
-    true # for now, assume success as this is a contrived example as part of a code exercise
+    error_message = nil
+    [ true, error_message ] # for now, assume success as this is a contrived example as part of a code exercise
   end
 
   def update_batch_payout_status(batch_payout, success)
