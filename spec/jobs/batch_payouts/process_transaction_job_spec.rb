@@ -77,7 +77,6 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
             expect(batch_payout.successful_count).to eq(1)
           end
         end
-        # TODO: Add test for when transaction is not the last transaction before success
         it 'updates transaction status to SUCCESS, batch payout appropriately & calls process_transaction_success!' do
           expect_any_instance_of(BankAccount)
             .to receive(:process_transaction_success!)
@@ -95,6 +94,28 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
           expect(batch_payout.completed_at).not_to be_nil
           expect(batch_payout.closed_at).not_to be_nil
           expect(batch_payout.status).to eq('success')
+        end
+
+        context 'when update_batch_payout_status fails after transaction success' do
+          before do
+            allow(job).to receive(:make_external_payout).and_return(true)
+            allow_any_instance_of(BatchPayout).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(batch_payout))
+          end
+
+          it 'rolls back the entire transaction including transaction status and bank account changes' do
+            initial_transaction_status = transaction.status
+            initial_bank_balance = bank_account.balance_cents
+            initial_bank_reserved = bank_account.reserved_amount_cents
+
+            expect { job.perform(transaction.id) }.to raise_error(ActiveRecord::RecordInvalid)
+
+            transaction.reload
+            bank_account.reload
+
+            expect(transaction.status).to eq(initial_transaction_status)
+            expect(bank_account.balance_cents).to eq(initial_bank_balance)
+            expect(bank_account.reserved_amount_cents).to eq(initial_bank_reserved)
+          end
         end
       end
 
@@ -159,6 +180,29 @@ RSpec.describe BatchPayouts::ProcessTransactionJob, type: :job do
             expect(batch_payout.completed_at).not_to be_nil
             expect(batch_payout.closed_at).not_to be_nil
             expect(batch_payout.status).to eq('denied')
+          end
+
+          context 'when update_batch_payout_status fails after marking transaction as FAILED' do
+            before do
+              allow_any_instance_of(BatchPayout).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(batch_payout))
+            end
+
+            it 'rolls back the entire transaction including transaction status and bank account changes' do
+              initial_transaction_status = transaction.status
+              initial_transaction_retry_count = transaction.retry_count
+              initial_bank_balance = bank_account.balance_cents
+              initial_bank_reserved = bank_account.reserved_amount_cents
+
+              expect { job.perform(transaction.id) }.to raise_error(ActiveRecord::RecordInvalid)
+
+              transaction.reload
+              bank_account.reload
+
+              expect(transaction.status).to eq(initial_transaction_status)
+              expect(transaction.retry_count).to eq(initial_transaction_retry_count)
+              expect(bank_account.balance_cents).to eq(initial_bank_balance)
+              expect(bank_account.reserved_amount_cents).to eq(initial_bank_reserved)
+            end
           end
         end
       end
