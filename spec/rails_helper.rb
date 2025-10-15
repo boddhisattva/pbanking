@@ -5,6 +5,7 @@ require_relative '../config/environment'
 # Prevent database truncation if the environment is production
 abort("The Rails environment is running in production mode!") if Rails.env.production?
 require 'rspec/rails'
+require 'database_cleaner/active_record'
 # Add additional requires below this line. Rails is not loaded until this point!
 
 # Requires supporting ruby files with custom matchers and macros, etc, in
@@ -35,10 +36,36 @@ RSpec.configure do |config|
     Rails.root.join('spec/fixtures')
   ]
 
-  # If you're not using ActiveRecord, or you'd prefer not to run each of your
-  # examples within a transaction, remove the following line or assign false
-  # instead of true.
-  config.use_transactional_fixtures = true
+  # IMPORTANT: We're using DatabaseCleaner instead of RSpec's built-in
+  # transactional fixtures for better control over cleaning strategies.
+  # This allows us to use :transaction (fast) for normal tests and
+  # :truncation (necessary) for concurrency tests tagged with :concurrent
+  config.use_transactional_fixtures = false
+
+  # DatabaseCleaner Configuration
+  # Clean slate before all tests run
+  config.before(:suite) do
+    DatabaseCleaner.clean_with(:truncation)
+  end
+
+  # For concurrency tests tagged with :concurrent, use truncation strategy
+  # This ensures threads can see committed data in the database
+  config.before(:each, :concurrent) do
+    DatabaseCleaner.strategy = :truncation
+  end
+
+  # For all other tests, use fast transaction strategy
+  config.before(:each) do |example|
+    unless example.metadata[:concurrent]
+      DatabaseCleaner.strategy = :transaction
+    end
+    DatabaseCleaner.start
+  end
+
+  # Clean up after each test
+  config.after(:each) do
+    DatabaseCleaner.clean
+  end
 
   # You can uncomment this line to turn off ActiveRecord support entirely.
   # config.use_active_record = false

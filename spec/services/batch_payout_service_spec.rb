@@ -117,7 +117,7 @@ RSpec.describe BatchPayoutService do
       end
     end
 
-    context 'with concurrent balance updates', :sidekiq_inline do
+    context 'with concurrent balance updates', :sidekiq_inline, :concurrent do
       it 'handles concurrent transfers to the same account correctly' do
         initial_balance = bank_account.balance_cents
         transfer_amount_per_request = 10000

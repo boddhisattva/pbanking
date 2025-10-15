@@ -23,5 +23,12 @@
 FactoryBot.define do
   factory :batch_payout do
     business_account
+    requested_amount { 10000 }
+    requested_amount_currency { "EUR" }
+    status { "PENDING" }
+    total_count { 0 }
+    pending_count { 0 }
+    successful_count { 0 }
+    failed_count { 0 }
   end
 end

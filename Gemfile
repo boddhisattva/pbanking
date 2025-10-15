@@ -79,6 +79,9 @@ group :development, :test do
 
   # Useful forOpenApi 3.0 related API documentation generation & maintenance through specs
   gem "rswag-specs"
+
+  # Database cleaning strategies for tests (transaction vs truncation)
+  gem "database_cleaner-active_record"
 end
 
 group :development do
