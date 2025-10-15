@@ -86,9 +86,7 @@ RSpec.describe BatchPayoutService do
       end
     end
 
-    # continue review from here & main key goal is to make sure add remaining specs later
 
-    # first priority is concurrency passes that's really key
     context 'with insufficient funds' do
       before do
         bank_account.update!(balance_cents: 1000)
